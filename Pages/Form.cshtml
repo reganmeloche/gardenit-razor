@@ -1,0 +1,60 @@
+@page "{id?}"
+@model FormViewModel
+
+<div>
+    <h2>@Model.PageTitle</h2>
+    <hr/>
+    <div>
+        <form enctype="multipart/form-data" method="post" asp-route-mode="@Model.Mode">
+            <input type="hidden" asp-for="Plant.Id"/>
+            <input type="hidden" asp-for="Plant.ImageName"/>
+            
+            <div class="form-group">
+                <label asp-for="Plant.Name">Name</label>
+                <input type="text" class="form-control" asp-for="Plant.Name"/>
+                <span class="text-danger" asp-validation-for="Plant.Name"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Plant.Type">Type</label>
+                <input type="text" class="form-control" asp-for="Plant.Type"/>
+                <span class="text-danger" asp-validation-for="Plant.Type"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Plant.DaysBetweenWatering">Days Between Watering</label>
+                <input type="number" class="form-control" asp-for="Plant.DaysBetweenWatering"/>
+                <span class="text-danger" asp-validation-for="Plant.DaysBetweenWatering"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Plant.PollPeriodMinutes">Moisture Polling Period</label>
+                <input type="number" class="form-control" asp-for="Plant.PollPeriodMinutes"/>
+                <span class="text-danger" asp-validation-for="Plant.PollPeriodMinutes"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Plant.Notes">Notes</label>
+                <textarea class="form-control" asp-for="Plant.Notes" rows="4" cols="50" maxlength="400"></textarea>
+                <span class="text-danger" asp-validation-for="Plant.Notes"></span>
+            </div>
+            
+            <div class="form-group">
+                <label for="ImageFile">Image</label>
+                <input asp-for="Plant.ImageFile" accept="image/">
+                <span class="text-danger" asp-validation-for="Plant.ImageFile"></span>
+            </div>
+            @if (Model.Plant != null && Model.Plant.HasImage) {
+                <div class="image-holder-details">
+                    <img class="plant-image" src="~/image/@Model.Plant.ImageName" alt="@Model.Plant.Name"/>
+                </div>
+            }
+            <button type="submit" class="btn text-light my-bg">Save</button>
+        </form>
+    </div>
+    <br/>
+    <div>
+        <!-- only show "Back to list" if create" otherwise, back to plant"-->
+    @if (Model.Mode == "create") {
+        <a asp-page="Garden">Back to List</a>
+    } else {
+        <a asp-page="Plant" asp-route-id="@Model.Plant.Id">Cancel</a>
+    }
+    </div>
+</div>

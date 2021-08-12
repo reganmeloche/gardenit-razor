@@ -1,0 +1,258 @@
+﻿@page "{id}"
+@model PlantViewModel
+
+@{
+    bool isActive = Model.Plant.HasDevice;
+}
+
+@if (Model == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <!-- LEFT SIDE: PLANT DETAILS--->
+        <div class="col-sm-6">
+            <h3>@Model.Plant.Name</h3>
+            <br/>
+            <div class="image-holder-details">
+                <img class="card-img-top plant-image" src="~/image/@Model.Plant.ImageName" alt="@Model.Plant.Name"/>
+            </div>
+            <dl class="row">
+                <dt class="col-sm-6">Type</dt>
+                <dd class="col-sm-6">@Model.Plant.Type</dd>
+
+                <dt class="col-sm-6">Date Added</dt>
+                <dd class="col-sm-6">@Model.Plant.CreateDate</dd>
+
+                @if (@isActive) {
+                    <dt class="col-sm-6">Moisture Poll Period (min)</dt>
+                    <dd class="col-sm-6">@Model.Plant.PollPeriodMinutes</dd>
+                }
+
+                <dt class="col-sm-6">Days between Watering</dt>
+                <dd class="col-sm-6">@Model.Plant.DaysBetweenWatering</dd>
+
+                <dt class="col-sm-6">Next Watering Date</dt>
+                <dd class="col-sm-6">@Model.Plant.NextWateringDate</dd>
+
+                <dt class="col-sm-6">Notes</dt>
+                <dd class="col-sm-6">@Model.Plant.Notes</dd>
+            </dl>
+            <div>
+                <form method="post">
+                    
+                    <a asp-page="Form" class="btn btn-primary" asp-route-id="@Model.Plant.Id">Edit</a>
+                    
+                    <button type="submit" class="btn btn-danger" asp-page-handler="delete" asp-route-id="@Model.Plant.Id">
+                        Delete
+                    </button>
+
+                @if (@isActive) {
+                    <button type="submit" class="btn btn-secondary" asp-page-handler="activate" asp-route-id="@Model.Plant.Id" asp-route-activate="false">
+                        De-Activate
+                    </button>
+                } else {
+                    <button type="submit" class="btn btn-warning" asp-page-handler="activate" asp-route-id="@Model.Plant.Id" asp-route-activate="true">
+                        Activate
+                    </button>
+                }
+                </form>       
+            </div>
+            <br/>
+            <a asp-page="Garden">Back to List</a>
+        </div>
+
+        <!-- RIGHT SIDE: MOISTURE/WATERING DATA -->
+        <div class="col-sm-6">
+            <div>
+                <h3 style="display:inline">Plant Data</h3>
+            @if (@isActive) {
+                <form method="post" style="display:inline">
+                    <div class="btn-group" role="group" style="float:right">
+                        <button type="submit" class="btn btn-primary btn-sm" asp-page-handler="water" asp-route-id="@Model.Plant.Id" asp-route-seconds=5>
+                            Auto Water
+                        </button>
+                        <button type="submit" class="btn btn-secondary btn-sm" asp-page-handler="moisture" asp-route-id="@Model.Plant.Id">
+                            Moisture
+                        </button>
+                    </div>
+                </form>
+            } else {
+                <form method="post" style="display:inline">
+                    <div class="btn-group" role="group" style="float:right">
+                        <button type="submit" class="btn btn-primary btn-sm" asp-page-handler="water" asp-route-id="@Model.Plant.Id" asp-route-seconds=5>
+                            Manual Water
+                        </button>
+                    </div>
+                </form>
+            }
+            </div>
+            
+            @if (@isActive) {
+            <div>
+                <canvas id="lineChart"></canvas>
+            </div>
+            }
+
+            <hr/>
+            <div>
+                <table class="table watering-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">
+                                Watering Date
+                            </th>
+                            @* <th scope="col" class="text-center">
+                                Seconds
+                            </th> *@
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var watering in Model.Plant.Waterings.OrderByDescending(x => x.WateringDate)) {
+                            <tr>
+                                <td>
+                                    @watering.WateringDate.ToString("MMM d, yyyy hh:mmtt")
+                                </td>
+                                @* <td class="text-center">
+                                    @watering.Seconds
+                                </td> *@
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        @Html.Raw(Model.MoistureChart.CreateChartCode("lineChart"));
+    </script>
+}
+@* 
+@code {
+    [Parameter]
+    public string Id { get; set; }
+    private PlantSummary Model;
+    private LineConfig _config;
+
+
+    protected override void OnInitialized()
+    {  
+        Model = _service.GetPlant(Guid.Parse(Id));
+        InitChart();
+    }
+
+    // Needed for datatables...
+    protected override async Task OnAfterRenderAsync(bool first) {
+        if (first) {
+            await JSRuntime.InvokeAsync<string>("TestDataTablesAdd", "");
+        }  
+    }
+
+    private void HandleDelete() {
+        // TODO: Ask confirmation
+        _service.DeletePlant(Model.Id);
+        Nav.NavigateTo($"plants");
+    }
+
+    private async Task HandleWater(int seconds) {
+        // TODO: Some sort of loading screen
+        await _service.WaterPlant(Model.Id, seconds);
+        Nav.NavigateTo($"plant/{Model.Id}", true);
+    }
+
+    private async Task HandleMoistureRequest() {
+        await _service.RequestMoistureReading(Model.Id);
+        Nav.NavigateTo($"plant/{Model.Id}", true);
+    }
+
+    // Should move this to a new file...
+    protected void InitChart()
+    {
+        _config = new LineConfig
+        {
+            Options = new LineOptions
+            {
+                Responsive = true,
+                Title = new OptionsTitle
+                {
+                    Display = true,
+                    Text = "Plant Moisture Data"
+                },
+                Tooltips = new Tooltips
+                {
+                    Mode = InteractionMode.Nearest,
+                    Intersect = true
+                },
+                Hover = new Hover
+                {
+                    Mode = InteractionMode.Nearest,
+                    Intersect = true
+                },
+                Scales = new Scales
+                {
+                    XAxes = new List<CartesianAxis>
+                    {
+                        new TimeAxis
+                        {
+                            ScaleLabel = new ScaleLabel
+                            {
+                                LabelString = "Date"
+                            },
+                            Time = new TimeOptions
+                            {
+                                TooltipFormat = "ll HH:mm"
+                            },
+                        }
+                    },
+                    YAxes = new List<CartesianAxis>
+                    {
+                        new LinearCartesianAxis
+                        {
+                            ScaleLabel = new ScaleLabel
+                            {
+                                LabelString = "Value"
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        //_config.Data.Labels.AddRange(GetNextDays(InitalCount).Select(d => d.ToString("o")));
+        //_config.Data.Labels.AddRange()
+
+        IDataset<TimePoint> moistureData = new LineDataset<TimePoint>()
+        {
+            Label = "Moisture Readings",
+            BackgroundColor = ColorUtil.FromDrawingColor(System.Drawing.Color.Black),
+            BorderColor = ColorUtil.FromDrawingColor(System.Drawing.Color.Black),
+            Fill = FillingMode.Disabled
+        };
+        foreach (var reading in Model.MoistureReadings) {
+            moistureData.Add(new TimePoint(reading.ReadDate, reading.Value));
+        }
+
+
+        IDataset<TimePoint> wateringData = new LineDataset<TimePoint>()
+        {
+            Label = "Waterings",
+            BackgroundColor = ColorUtil.FromDrawingColor(System.Drawing.Color.Blue),
+            BorderColor = ColorUtil.FromDrawingColor(System.Drawing.Color.Blue),
+            Fill = FillingMode.Disabled,
+            ShowLine = false
+        };
+        foreach (var watering in Model.Waterings) {
+            wateringData.Add(new TimePoint(watering.WateringDate, 0));
+        }
+
+        _config.Data.Datasets.Add(moistureData);
+        _config.Data.Datasets.Add(wateringData);
+    }
+} *@
