@@ -8,6 +8,7 @@
         <form enctype="multipart/form-data" method="post" asp-route-mode="@Model.Mode">
             <input type="hidden" asp-for="Plant.Id"/>
             <input type="hidden" asp-for="Plant.ImageName"/>
+            <input type="hidden" asp-for="Plant.HasDevice"/>
             
             <div class="form-group">
                 <label asp-for="Plant.Name">Name</label>
